@@ -6,7 +6,7 @@ inference:
 input:
   height: 1024
   width: 2048
-load_weights_dir: ./DAP-weights
+load_weights_dir: /mnt/projects/roadside_vision/models/DAP-weights
 median_align: false
 model:
   args:

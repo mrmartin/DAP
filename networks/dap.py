@@ -40,7 +40,7 @@ class DAP(nn.Module):
         dinov3_repo_dir = os.path.abspath(os.path.realpath(os.path.normpath(dinov3_repo_dir)))
         # Fallback: if the calculated path doesn't exist, try a hardcoded absolute path
         if not os.path.exists(dinov3_repo_dir):
-            _fallback_path = "/home/mkolar/roadside_vision/dap/DAP-weights/depth_anything_v2_metric/depth_anything_v2/dinov3"
+            _fallback_path = "/mnt/projects/roadside_vision/models/DAP-weights/depth_anything_v2_metric/depth_anything_v2/dinov3"
             if os.path.exists(_fallback_path):
                 dinov3_repo_dir = _fallback_path
         dinov3_arch="dinov3_vitl16"          
