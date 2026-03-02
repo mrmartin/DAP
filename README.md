@@ -62,15 +62,15 @@ Or with an explicit venv and paths:
 /path/to/venv/bin/python /path/to/DAP/dap_inference.py
 ```
 
-**Example** (using venv and default image `~/roadside_vision/dap/panorama.jpg`):
+**Example** (using venv and default image `panorama.jpg` in repo):
 
 ```bash
-~/.venv-310/bin/python ~/roadside_vision/dap/dap_inference.py
+/path/to/venv/bin/python dap_inference.py
 ```
 
 **Arguments:**
 - `--config` – Path to YAML config (default: `infer.yaml`)
-- `--image` – Input panorama (default: `~/roadside_vision/dap/panorama.jpg`)
+- `--image` – Input panorama (default: `panorama.jpg` in repo root)
 - `--output` – Output directory (default: `test_output`)
 - `--gpu` – GPU ID (default: `0`)
 - `--input_size` – Input height for preprocessing (default: `1024`)
@@ -90,7 +90,7 @@ Initializing DAP Inference Engine
 🔹 Loading 858/859 weights into model
 ✅ Model loaded successfully.
 
-Loading image: /home/mkolar/roadside_vision/dap/panorama.jpg
+Loading image: /path/to/DAP/panorama.jpg
 
 Running inference...
 100%|████████████████████████████████████████████████████████| 100/100 [01:04<00:00,  1.55it/s]

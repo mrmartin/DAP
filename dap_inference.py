@@ -317,7 +317,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="DAP Inference Sample")
     parser.add_argument("--config", default="infer.yaml", help="Path to config YAML file")
-    parser.add_argument("--image", default=os.path.expanduser("~/roadside_vision/dap/panorama.jpg"), help="Path to input panorama image")
+    parser.add_argument("--image", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "panorama.jpg"), help="Path to input panorama image")
     parser.add_argument("--output", default="test_output", help="Output directory")
     parser.add_argument("--gpu", type=int, default=0, help="GPU ID to use")
     parser.add_argument("--input_size", type=int, default=1024, help="Input height for preprocessing")
