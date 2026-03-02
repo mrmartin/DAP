@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.transforms import Compose
 import cv2
+import os
 from depth_anything_v2_metric.depth_anything_v2.dpt import DepthAnythingV2
 from depth_anything_v2_metric.depth_anything_v2.dinov3_adpther import DINOv3Adapter
 from argparse import Namespace
@@ -29,7 +30,19 @@ class DAP(nn.Module):
         }
         
         # Load the pretrained model of depth anything
-        dinov3_repo_dir="./depth_anything_v2_metric/depth_anything_v2/dinov3"     # 你的本地 repo
+        # Use absolute path based on DAP-weights directory location
+        # This file is in dap/networks/, so go up to dap/, then into DAP-weights/
+        _file_path = os.path.realpath(os.path.abspath(__file__))
+        _dap_dir = os.path.dirname(os.path.dirname(_file_path))
+        _dap_weights_dir = os.path.join(_dap_dir, "DAP-weights")
+        dinov3_repo_dir = os.path.join(_dap_weights_dir, "depth_anything_v2_metric", "depth_anything_v2", "dinov3")
+        # Ensure it's absolute and normalized
+        dinov3_repo_dir = os.path.abspath(os.path.realpath(os.path.normpath(dinov3_repo_dir)))
+        # Fallback: if the calculated path doesn't exist, try a hardcoded absolute path
+        if not os.path.exists(dinov3_repo_dir):
+            _fallback_path = "/home/mkolar/roadside_vision/dap/DAP-weights/depth_anything_v2_metric/depth_anything_v2/dinov3"
+            if os.path.exists(_fallback_path):
+                dinov3_repo_dir = _fallback_path
         dinov3_arch="dinov3_vitl16"          
         dinov3_weight=""
 

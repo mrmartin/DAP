@@ -31,18 +31,26 @@ Usage:
 from __future__ import absolute_import, division, print_function
 
 import os
+import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import cv2
 from typing import Union, Tuple, Optional
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+from tqdm import tqdm
+
+# Add dap directory to Python path for absolute imports to work
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+if _script_dir not in sys.path:
+    sys.path.insert(0, _script_dir)
 
 # These imports would need to be available in the target repo
-from networks.models import make
+try:
+    from .networks.models import make
+except ImportError:
+    # Fallback for when running as script directly
+    from networks.models import make
 
 
 class DAPInference:
@@ -261,62 +269,6 @@ class DAPInference:
         if return_mask:
             return depth_map, np.ones_like(depth_map, dtype=bool)
         return depth_map
-    
-    def predict_with_visualization(
-        self,
-        image_bgr: np.ndarray,
-        vis_range: str = "100m",
-        cmap: str = "Spectral"
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Run inference and generate visualizations.
-        
-        Args:
-            image_bgr: Input image as BGR numpy array
-            vis_range: Visualization range ("100m" or "10m")
-            cmap: Matplotlib colormap name
-            
-        Returns:
-            depth_map: Raw depth prediction (float32)
-            depth_gray: Grayscale visualization (uint8)
-            depth_color: Color visualization (RGB uint8)
-        """
-        depth_map = self.predict(image_bgr)
-        
-        # Normalize for visualization
-        pred_normalized = depth_map / self.max_depth if self.max_depth > 0 else depth_map
-        
-        # Generate visualizations
-        depth_gray, depth_color = self._pred_to_vis(pred_normalized, vis_range, cmap)
-        
-        return depth_map, depth_gray, depth_color
-    
-    def _pred_to_vis(
-        self, 
-        pred: np.ndarray, 
-        vis_range: str = "100m", 
-        cmap: str = "Spectral"
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """Convert depth prediction to visualizations."""
-        if vis_range == "100m":
-            pred_clip = np.clip(pred, 0.0, 1.0)
-            depth_gray = (pred_clip * 255).astype(np.uint8)
-        elif vis_range == "10m":
-            pred_clip = np.clip(pred, 0.0, 0.1)
-            depth_gray = (pred_clip * 10.0 * 255).astype(np.uint8)
-        else:
-            raise ValueError(f"Unknown vis_range: {vis_range} (use '100m' or '10m')")
-        
-        depth_color = self._colorize_depth(depth_gray, cmap=cmap)
-        return depth_gray, depth_color
-    
-    @staticmethod
-    def _colorize_depth(depth_u8: np.ndarray, cmap: str = "Spectral") -> np.ndarray:
-        """Colorize depth map."""
-        disp = depth_u8.astype(np.float32) / 255.0
-        colored = matplotlib.colormaps[cmap](disp)[..., :3]
-        colored = (colored * 255).astype(np.uint8)
-        return np.ascontiguousarray(colored)
 
 
 def load_dap_inference(
@@ -364,13 +316,11 @@ if __name__ == "__main__":
     import yaml
     
     parser = argparse.ArgumentParser(description="DAP Inference Sample")
-    parser.add_argument("--config", default="config/infer.yaml", help="Path to config YAML file")
-    parser.add_argument("--image", default="assets/panorama.jpg", help="Path to input panorama image")
+    parser.add_argument("--config", default="infer.yaml", help="Path to config YAML file")
+    parser.add_argument("--image", default="/home/mkolar/roadside_vision/reports/chrudim/panorama.jpg", help="Path to input panorama image")
     parser.add_argument("--output", default="test_output", help="Output directory")
     parser.add_argument("--gpu", type=int, default=0, help="GPU ID to use")
-    parser.add_argument("--vis", default="100m", choices=["100m", "10m"], help="Visualization range")
-    parser.add_argument("--cmap", default="Spectral", help="Colormap for visualization")
-    parser.add_argument("--input_size", type=int, default=256, help="Input height for preprocessing")
+    parser.add_argument("--input_size", type=int, default=1024, help="Input height for preprocessing")
     
     args = parser.parse_args()
     
@@ -395,67 +345,19 @@ if __name__ == "__main__":
     if image_bgr is None:
         raise FileNotFoundError(f"Cannot read image: {args.image}")
     
-    # Check aspect ratio
+    # aspect ration  must be 2:1
     h, w = image_bgr.shape[:2]
     aspect_ratio = w / h
-    if abs(aspect_ratio - 2.0) > 0.1:
-        print(f"⚠️ Warning: Image has aspect ratio {aspect_ratio:.2f}, expected ~2.0 (panorama format)")
+    assert aspect_ratio == 2.0, f"Image must have aspect ratio 2:1, but has {aspect_ratio:.2f}"
     
     # Run inference
     print(f"\nRunning inference...")
-    depth_map, depth_gray, depth_color = inferencer.predict_with_visualization(
-        image_bgr,
-        vis_range=args.vis,
-        cmap=args.cmap
-    )
+    for tqdm in tqdm(range(100)):
+        depth_map = inferencer.predict(image_bgr)
     
     # Save results
     os.makedirs(args.output, exist_ok=True)
     
-    # Save raw depth map
-    depth_npy_path = os.path.join(args.output, "depth_map.npy")
-    np.save(depth_npy_path, depth_map)
-    print(f"✅ Saved depth map (npy): {depth_npy_path}")
-    
-    # Save grayscale visualization
-    depth_gray_path = os.path.join(args.output, "depth_gray.png")
-    cv2.imwrite(depth_gray_path, depth_gray)
-    print(f"✅ Saved grayscale visualization: {depth_gray_path}")
-    
-    # Save color visualization
-    depth_color_path = os.path.join(args.output, "depth_color.png")
-    cv2.imwrite(depth_color_path, cv2.cvtColor(depth_color, cv2.COLOR_RGB2BGR))
-    print(f"✅ Saved color visualization: {depth_color_path}")
-    
-    # Create side-by-side comparison plot
-    try:
-        from PIL import Image
-        
-        fig, axes = plt.subplots(2, 1, figsize=(12, 10))
-        
-        # Original image
-        image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-        axes[0].imshow(image_rgb)
-        axes[0].set_title('Original Panorama', fontsize=14)
-        axes[0].axis('off')
-        
-        # Depth map with colorbar
-        max_depth_meters = 100.0
-        depth_meters = depth_map * max_depth_meters
-        im = axes[1].imshow(depth_meters, cmap='Spectral', vmin=0, vmax=max_depth_meters)
-        axes[1].set_title('Depth Map (Distance from Camera)', fontsize=14)
-        axes[1].axis('off')
-        cbar = plt.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
-        cbar.set_label('Distance (meters)', fontsize=12)
-        
-        plt.tight_layout()
-        plot_path = os.path.join(args.output, "comparison_plot.jpg")
-        plt.savefig(plot_path, dpi=150, bbox_inches='tight')
-        plt.close()
-        print(f"✅ Saved comparison plot: {plot_path}")
-    except Exception as e:
-        print(f"⚠️ Warning: Could not create comparison plot: {e}")
-    
-    print("\n" + "=" * 60)
-    print("✅ Inference completed successfully!")
-    print("=" * 60)
+    depth_map_path = os.path.join(args.output, "depth_map.npy")
+    np.save(depth_map_path, depth_map)
+    print(f"✅ Saved depth map: {depth_map_path}")
