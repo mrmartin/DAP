@@ -6,6 +6,7 @@ torchvision==0.22.1
 tornado==6.5.2
 opencv-python
 matplotlib
+Pillow
 huggingface_hub
 einops
 safetensors
@@ -13,3 +14,6 @@ open3d
 tensorboardX
 mmengine
 pyexr
+numpy
+pyyaml
+tqdm
